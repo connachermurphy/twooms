@@ -8,6 +8,9 @@
 *.so
 *.dylib
 
+# Unix binary (output of go build)
+twooms
+
 # Test binary, built with `go test -c`
 *.test
 
