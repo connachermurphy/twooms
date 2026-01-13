@@ -63,3 +63,87 @@ The `main.go` file contains a REPL (Read-Eval-Print Loop) that:
 2. Checks if input starts with "/" to identify commands
 3. Delegates command handling to the commands package
 4. Exits when a command handler returns `true`
+
+### Storage Architecture
+
+The application uses a **storage interface pattern** to support swappable backends (currently JSON, designed for future bbolt migration).
+
+#### Current Structure
+
+- **`storage/store.go`**: Defines the `Store` interface with all storage operations
+- **`storage/types.go`**: Core data structures (`Project`, `Task`)
+- **`storage/json.go`**: JSON file implementation (currently active)
+- **Storage location**: `~/.twooms.json`
+
+#### Migrating to bbolt
+
+To add bbolt support while keeping JSON as fallback:
+
+**Step 1: Implement bbolt backend**
+
+Create `storage/bbolt.go`:
+```go
+package storage
+
+import "go.etcd.io/bbolt"
+
+type BBoltStore struct {
+    db *bolt.DB
+}
+
+func NewBBoltStore(filename string) (*BBoltStore, error) {
+    db, err := bolt.Open(filename, 0600, nil)
+    if err != nil {
+        return nil, err
+    }
+
+    // Initialize buckets
+    err = db.Update(func(tx *bolt.Tx) error {
+        if _, err := tx.CreateBucketIfNotExists([]byte("projects")); err != nil {
+            return err
+        }
+        if _, err := tx.CreateBucketIfNotExists([]byte("tasks")); err != nil {
+            return err
+        }
+        return nil
+    })
+
+    if err != nil {
+        return nil, err
+    }
+
+    return &BBoltStore{db: db}, nil
+}
+
+// Implement all Store interface methods
+// Use json.Marshal/Unmarshal to serialize Project/Task structs
+// Store with ID as key, serialized struct as value
+```
+
+Key implementation details:
+- Use two top-level buckets: `"projects"` and `"tasks"`
+- Serialize structs with `json.Marshal()` before storing
+- Use ID fields as keys (e.g., `[]byte("proj-1")`)
+- For `ListTasks(projectID)`, iterate all tasks and filter by `ProjectID` field
+- Implement ID generation using a separate `"meta"` bucket with counters
+
+**Step 2: Switch in main.go**
+
+Replace the storage initialization:
+```go
+// OLD (JSON):
+dbPath := filepath.Join(homeDir, ".twooms.json")
+store, err := storage.NewJSONStore(dbPath)
+
+// NEW (bbolt):
+dbPath := filepath.Join(homeDir, ".twooms.db")
+store, err := storage.NewBBoltStore(dbPath)
+```
+
+That's it! All commands continue working unchanged because they use the `Store` interface.
+
+**Migration Tools**: If users have existing JSON data, create a migration command that:
+1. Opens both stores
+2. Reads all projects/tasks from JSON
+3. Writes them to bbolt
+4. Renames `.twooms.json` to `.twooms.json.backup`

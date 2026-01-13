@@ -1,13 +1,16 @@
 package commands
 
-import fmt
+import (
+	"fmt"
+	"strings"
+)
 
 func init() {
 	Register(&Command{
-		Name:        /echo,
-		Description: Echo your message,
+		Name:        "/echo",
+		Description: "Echo your message",
 		Handler: func(args []string) bool {
-			fmt.Println(strings.Join(args,  ))
+			fmt.Println(strings.Join(args, " "))
 			return false
 		},
 	})
