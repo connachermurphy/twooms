@@ -30,9 +30,16 @@ The application uses a **command registry pattern** where commands are automatic
 ### Command System
 
 - **Registry**: The `commands/` package contains the command registration system
-- **Command Files**: Each command lives in its own file (e.g., `commands/quit.go`, `commands/echo.go`)
+- **Command Files**: Each command lives in its own file:
+  - `commands/commands.go` - Registry, `Execute()`, `SetStore()`/`GetStore()`
+  - `commands/help.go` - `/help` command
+  - `commands/quit.go` - `/quit` and `/exit` commands
+  - `commands/echo.go` - `/echo` command
+  - `commands/project.go` - `/project`, `/projects`, `/delproject` commands
+  - `commands/task.go` - `/task`, `/tasks`, `/done`, `/undone`, `/deltask` commands
 - **Auto-registration**: Commands use `init()` functions to call `Register(&Command{...})` with their name, description, and handler
 - **Handler Return**: Command handlers return `bool` - `true` signals the application should quit, `false` continues the REPL loop
+- **Execute Return**: The `Execute(input)` function returns `(bool, error)` - the bool from the handler, plus any execution errors
 
 ### Adding New Commands
 
@@ -48,6 +55,7 @@ func init() {
         Description: "Description here",
         Handler: func(args []string) bool {
             // Implementation
+            // Use GetStore() to access storage operations
             return false // or true to quit
         },
     })
@@ -55,6 +63,34 @@ func init() {
 ```
 
 The command will be automatically registered when the application starts.
+
+**Command aliasing**: You can register multiple commands in a single file to create aliases (see `quit.go` which registers both `/quit` and `/exit`).
+
+**Accessing storage**: Use `GetStore()` to access the storage interface for database operations:
+```go
+// Example: creating a project
+project, err := GetStore().CreateProject(name)
+if err != nil {
+    fmt.Printf("Error: %v\n", err)
+    return false
+}
+```
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show available commands |
+| `/quit`, `/exit` | Exit Twooms |
+| `/echo <message>` | Echo your message |
+| `/project <name>` | Create a new project |
+| `/projects` | List all projects |
+| `/delproject <project-id>` | Delete a project and its tasks |
+| `/task <project-id> <name>` | Add a task to a project |
+| `/tasks <project-id>` | List tasks in a project |
+| `/done <task-id>` | Mark a task as done |
+| `/undone <task-id>` | Mark a task as not done |
+| `/deltask <task-id>` | Delete a task |
 
 ### Main Loop
 
