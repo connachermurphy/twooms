@@ -30,9 +30,16 @@ The application uses a **command registry pattern** where commands are automatic
 ### Command System
 
 - **Registry**: The `commands/` package contains the command registration system
-- **Command Files**: Each command lives in its own file (e.g., `commands/quit.go`, `commands/echo.go`)
+- **Command Files**: Each command lives in its own file:
+  - `commands/commands.go` - Registry, `Execute()`, `SetStore()`/`GetStore()`
+  - `commands/help.go` - `/help` command
+  - `commands/quit.go` - `/quit` and `/exit` commands
+  - `commands/echo.go` - `/echo` command
+  - `commands/project.go` - `/project`, `/projects`, `/delproject` commands
+  - `commands/task.go` - `/task`, `/tasks`, `/done`, `/undone`, `/deltask` commands
 - **Auto-registration**: Commands use `init()` functions to call `Register(&Command{...})` with their name, description, and handler
 - **Handler Return**: Command handlers return `bool` - `true` signals the application should quit, `false` continues the REPL loop
+- **Execute Return**: The `Execute(input)` function returns `(bool, error)` - the bool from the handler, plus any execution errors
 
 ### Adding New Commands
 
@@ -48,6 +55,7 @@ func init() {
         Description: "Description here",
         Handler: func(args []string) bool {
             // Implementation
+            // Use GetStore() to access storage operations
             return false // or true to quit
         },
     })
@@ -56,6 +64,34 @@ func init() {
 
 The command will be automatically registered when the application starts.
 
+**Command aliasing**: You can register multiple commands in a single file to create aliases (see `quit.go` which registers both `/quit` and `/exit`).
+
+**Accessing storage**: Use `GetStore()` to access the storage interface for database operations:
+```go
+// Example: creating a project
+project, err := GetStore().CreateProject(name)
+if err != nil {
+    fmt.Printf("Error: %v\n", err)
+    return false
+}
+```
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show available commands |
+| `/quit`, `/exit` | Exit Twooms |
+| `/echo <message>` | Echo your message |
+| `/project <name>` | Create a new project |
+| `/projects` | List all projects |
+| `/delproject <project-id>` | Delete a project and its tasks |
+| `/task <project-id> <name>` | Add a task to a project |
+| `/tasks <project-id>` | List tasks in a project |
+| `/done <task-id>` | Mark a task as done |
+| `/undone <task-id>` | Mark a task as not done |
+| `/deltask <task-id>` | Delete a task |
+
 ### Main Loop
 
 The `main.go` file contains a REPL (Read-Eval-Print Loop) that:
@@ -63,3 +99,87 @@ The `main.go` file contains a REPL (Read-Eval-Print Loop) that:
 2. Checks if input starts with "/" to identify commands
 3. Delegates command handling to the commands package
 4. Exits when a command handler returns `true`
+
+### Storage Architecture
+
+The application uses a **storage interface pattern** to support swappable backends (currently JSON, designed for future bbolt migration).
+
+#### Current Structure
+
+- **`storage/store.go`**: Defines the `Store` interface with all storage operations
+- **`storage/types.go`**: Core data structures (`Project`, `Task`)
+- **`storage/json.go`**: JSON file implementation (currently active)
+- **Storage location**: `~/.twooms.json`
+
+#### Migrating to bbolt
+
+To add bbolt support while keeping JSON as fallback:
+
+**Step 1: Implement bbolt backend**
+
+Create `storage/bbolt.go`:
+```go
+package storage
+
+import "go.etcd.io/bbolt"
+
+type BBoltStore struct {
+    db *bolt.DB
+}
+
+func NewBBoltStore(filename string) (*BBoltStore, error) {
+    db, err := bolt.Open(filename, 0600, nil)
+    if err != nil {
+        return nil, err
+    }
+
+    // Initialize buckets
+    err = db.Update(func(tx *bolt.Tx) error {
+        if _, err := tx.CreateBucketIfNotExists([]byte("projects")); err != nil {
+            return err
+        }
+        if _, err := tx.CreateBucketIfNotExists([]byte("tasks")); err != nil {
+            return err
+        }
+        return nil
+    })
+
+    if err != nil {
+        return nil, err
+    }
+
+    return &BBoltStore{db: db}, nil
+}
+
+// Implement all Store interface methods
+// Use json.Marshal/Unmarshal to serialize Project/Task structs
+// Store with ID as key, serialized struct as value
+```
+
+Key implementation details:
+- Use two top-level buckets: `"projects"` and `"tasks"`
+- Serialize structs with `json.Marshal()` before storing
+- Use ID fields as keys (e.g., `[]byte("proj-1")`)
+- For `ListTasks(projectID)`, iterate all tasks and filter by `ProjectID` field
+- Implement ID generation using a separate `"meta"` bucket with counters
+
+**Step 2: Switch in main.go**
+
+Replace the storage initialization:
+```go
+// OLD (JSON):
+dbPath := filepath.Join(homeDir, ".twooms.json")
+store, err := storage.NewJSONStore(dbPath)
+
+// NEW (bbolt):
+dbPath := filepath.Join(homeDir, ".twooms.db")
+store, err := storage.NewBBoltStore(dbPath)
+```
+
+That's it! All commands continue working unchanged because they use the `Store` interface.
+
+**Migration Tools**: If users have existing JSON data, create a migration command that:
+1. Opens both stores
+2. Reads all projects/tasks from JSON
+3. Writes them to bbolt
+4. Renames `.twooms.json` to `.twooms.json.backup`

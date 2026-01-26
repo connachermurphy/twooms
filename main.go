@@ -4,12 +4,35 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"twooms/commands"
+	"twooms/storage"
 )
 
 func main() {
+	// Initialize storage
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting home directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	dbPath := filepath.Join(homeDir, ".twooms.json")
+	store, err := storage.NewJSONStore(dbPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing storage: %v\n", err)
+		os.Exit(1)
+	}
+	defer store.Close()
+
+	// Set store for commands to use
+	commands.SetStore(store)
+
+	// Start REPL
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("Welcome to CLI Chat! Type /help for available commands.")
+	fmt.Println("Welcome to Twooms! Type /help for available commands.")
 
 	for {
 		fmt.Print("> ")
@@ -23,37 +46,15 @@ func main() {
 		}
 
 		if strings.HasPrefix(input, "/") {
-			if handleCommand(input) {
-				break // quit signal
+			quit, err := commands.Execute(input)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+			if quit {
+				break
 			}
 		} else {
 			fmt.Printf("You said: %s\n", input)
 		}
 	}
-}
-
-func handleCommand(input string) bool {
-	parts := strings.Fields(input)
-	cmd := strings.ToLower(parts[0])
-
-	switch cmd {
-	case "/hello":
-		fmt.Println("Hello, world!")
-	case "/help":
-		printHelp()
-	case "/quit", "/exit":
-		fmt.Println("Goodbye!")
-		return true
-	default:
-		fmt.Printf("Unknown command: %s. Type /help for available commands.\n", cmd)
-	}
-
-	return false
-}
-
-func printHelp() {
-	fmt.Println(`Available commands:
-  /hello  - Say hello
-  /help   - Show this help message
-  /quit   - Exit the chat`)
 }
