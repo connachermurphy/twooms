@@ -4,19 +4,39 @@ import (
 	"fmt"
 	"strings"
 
+	"google.golang.org/genai"
+	"twooms/llm"
 	"twooms/storage"
 )
+
+// ParamType defines the type of a command parameter
+type ParamType string
+
+const (
+	ParamTypeString ParamType = "string"
+)
+
+// Param defines a parameter for a command
+type Param struct {
+	Name        string
+	Type        ParamType
+	Description string
+	Required    bool
+}
 
 // Command represents a CLI command
 type Command struct {
 	Name        string
 	Description string
 	Handler     func(args []string) bool // returns true to quit
+	Params      []Param                  // parameter definitions for tool generation
+	Hidden      bool                     // if true, exclude from tool generation
 }
 
 var (
-	registry = make(map[string]*Command)
-	store    storage.Store
+	registry  = make(map[string]*Command)
+	store     storage.Store
+	llmClient llm.Client
 )
 
 // Register adds a command to the registry
@@ -32,6 +52,16 @@ func SetStore(s storage.Store) {
 // GetStore returns the global store
 func GetStore() storage.Store {
 	return store
+}
+
+// SetLLMClient sets the global LLM client for commands to use
+func SetLLMClient(c llm.Client) {
+	llmClient = c
+}
+
+// GetLLMClient returns the global LLM client
+func GetLLMClient() llm.Client {
+	return llmClient
 }
 
 // Execute runs a command by name with arguments
@@ -59,4 +89,48 @@ func List() []*Command {
 		cmds = append(cmds, cmd)
 	}
 	return cmds
+}
+
+// GenerateToolDefinitions creates Gemini FunctionDeclarations from registered commands
+func GenerateToolDefinitions() []*genai.FunctionDeclaration {
+	var tools []*genai.FunctionDeclaration
+
+	for _, cmd := range registry {
+		if cmd.Hidden {
+			continue
+		}
+
+		// Build properties and required arrays from Params
+		properties := make(map[string]*genai.Schema)
+		var required []string
+
+		for _, p := range cmd.Params {
+			properties[p.Name] = &genai.Schema{
+				Type:        genai.TypeString,
+				Description: p.Description,
+			}
+			if p.Required {
+				required = append(required, p.Name)
+			}
+		}
+
+		// Create FunctionDeclaration
+		fd := &genai.FunctionDeclaration{
+			Name:        strings.TrimPrefix(cmd.Name, "/"),
+			Description: cmd.Description,
+		}
+
+		// Only add Parameters if there are any
+		if len(properties) > 0 {
+			fd.Parameters = &genai.Schema{
+				Type:       genai.TypeObject,
+				Properties: properties,
+				Required:   required,
+			}
+		}
+
+		tools = append(tools, fd)
+	}
+
+	return tools
 }

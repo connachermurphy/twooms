@@ -217,6 +217,36 @@ func (s *JSONStore) UpdateTask(id string, done bool) error {
 	return fmt.Errorf("task not found: %s", id)
 }
 
+// SetTaskDueDate sets or clears a task's due date
+func (s *JSONStore) SetTaskDueDate(id string, dueDate *time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, t := range s.data.Tasks {
+		if t.ID == id {
+			t.DueDate = dueDate
+			return s.save()
+		}
+	}
+
+	return fmt.Errorf("task not found: %s", id)
+}
+
+// SetTaskDuration sets a task's duration
+func (s *JSONStore) SetTaskDuration(id string, duration Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, t := range s.data.Tasks {
+		if t.ID == id {
+			t.Duration = duration
+			return s.save()
+		}
+	}
+
+	return fmt.Errorf("task not found: %s", id)
+}
+
 // DeleteTask removes a task
 func (s *JSONStore) DeleteTask(id string) error {
 	s.mu.Lock()

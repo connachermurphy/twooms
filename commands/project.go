@@ -9,6 +9,9 @@ func init() {
 	Register(&Command{
 		Name:        "/project",
 		Description: "Create a new project",
+		Params: []Param{
+			{Name: "name", Type: ParamTypeString, Description: "The name of the project to create", Required: true},
+		},
 		Handler: func(args []string) bool {
 			if len(args) == 0 {
 				fmt.Println("Usage: /project <name>")
@@ -64,6 +67,9 @@ func init() {
 	Register(&Command{
 		Name:        "/delproject",
 		Description: "Delete a project and its tasks",
+		Params: []Param{
+			{Name: "project_id", Type: ParamTypeString, Description: "The ID of the project to delete", Required: true},
+		},
 		Handler: func(args []string) bool {
 			if len(args) == 0 {
 				fmt.Println("Usage: /delproject <project-id>")

@@ -9,6 +9,7 @@ func init() {
 	Register(&Command{
 		Name:        "/help",
 		Description: "Show available commands",
+		Hidden:      true,
 		Handler: func(args []string) bool {
 			fmt.Println("Available commands:")
 

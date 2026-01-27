@@ -1,5 +1,7 @@
 package storage
 
+import "time"
+
 // Store defines the interface for task manager storage
 // This allows swapping between JSON, bbolt, or other backends
 type Store interface {
@@ -14,6 +16,8 @@ type Store interface {
 	ListTasks(projectID string) ([]*Task, error)
 	GetTask(id string) (*Task, error)
 	UpdateTask(id string, done bool) error
+	SetTaskDueDate(id string, dueDate *time.Time) error
+	SetTaskDuration(id string, duration Duration) error
 	DeleteTask(id string) error
 
 	// Lifecycle
