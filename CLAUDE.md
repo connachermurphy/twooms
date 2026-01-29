@@ -31,12 +31,13 @@ The application uses a **command registry pattern** where commands are automatic
 
 - **Registry**: The `commands/` package contains the command registration system
 - **Command Files**: Each command lives in its own file:
-  - `commands/commands.go` - Registry, `Execute()`, `SetStore()`/`GetStore()`
+  - `commands/commands.go` - Registry, `Execute()`, `SetStore()`/`GetStore()`, `SetLLMClient()`/`GetLLMClient()`
   - `commands/help.go` - `/help` command
   - `commands/quit.go` - `/quit` and `/exit` commands
   - `commands/echo.go` - `/echo` command
   - `commands/project.go` - `/project`, `/projects`, `/delproject` commands
-  - `commands/task.go` - `/task`, `/tasks`, `/done`, `/undone`, `/deltask` commands
+  - `commands/task.go` - `/task`, `/tasks`, `/done`, `/undone`, `/deltask`, `/due`, `/duration` commands
+  - `commands/chat.go` - `/chat` command (LLM-powered assistant)
 - **Auto-registration**: Commands use `init()` functions to call `Register(&Command{...})` with their name, description, and handler
 - **Handler Return**: Command handlers return `bool` - `true` signals the application should quit, `false` continues the REPL loop
 - **Execute Return**: The `Execute(input)` function returns `(bool, error)` - the bool from the handler, plus any execution errors
@@ -91,6 +92,9 @@ if err != nil {
 | `/done <task-id>` | Mark a task as done |
 | `/undone <task-id>` | Mark a task as not done |
 | `/deltask <task-id>` | Delete a task |
+| `/due <task-id> <YYYY-MM-DD\|none>` | Set or clear a task's due date |
+| `/duration <task-id> <duration>` | Set a task's duration (15m, 30m, 1h, 2h, 4h) |
+| `/chat <message>` | Chat with the AI assistant |
 
 ### Main Loop
 
@@ -100,6 +104,32 @@ The `main.go` file contains a REPL (Read-Eval-Print Loop) that:
 3. Delegates command handling to the commands package
 4. Exits when a command handler returns `true`
 
+### LLM Integration
+
+The application integrates with Google's Gemini API to provide an AI-powered chat assistant.
+
+#### Architecture
+
+- **`llm/client.go`**: Defines the `Client` interface and error types
+- **`llm/gemini.go`**: Gemini API implementation with tool calling support
+- **`llm/types.go`**: Response and configuration types
+
+#### Configuration
+
+Set the `GEMINI_API_KEY` environment variable to enable LLM features:
+```bash
+export GEMINI_API_KEY=your-api-key
+```
+
+#### Tool Calling
+
+The `/chat` command uses Gemini's function calling to execute Twooms commands. When you ask the assistant to perform tasks (e.g., "create a project called Work"), it:
+1. Interprets your natural language request
+2. Calls the appropriate command(s) via tool definitions
+3. Returns a human-friendly response
+
+Tool definitions are auto-generated from registered commands using `GenerateToolDefinitions()` in `commands/commands.go`. Commands with `Hidden: true` are excluded from tool generation.
+
 ### Storage Architecture
 
 The application uses a **storage interface pattern** to support swappable backends (currently JSON, designed for future bbolt migration).
@@ -107,9 +137,16 @@ The application uses a **storage interface pattern** to support swappable backen
 #### Current Structure
 
 - **`storage/store.go`**: Defines the `Store` interface with all storage operations
-- **`storage/types.go`**: Core data structures (`Project`, `Task`)
+- **`storage/types.go`**: Core data structures (`Project`, `Task`, `Duration`)
 - **`storage/json.go`**: JSON file implementation (currently active)
 - **Storage location**: `~/.twooms.json`
+
+#### Task Fields
+
+The `Task` struct includes:
+- `ID`, `ProjectID`, `Name`, `Done`, `CreatedAt` - core fields
+- `DueDate` - optional due date (`*time.Time`)
+- `Duration` - estimated time to complete (valid values: `15m`, `30m`, `1h`, `2h`, `4h`)
 
 #### Migrating to bbolt
 
