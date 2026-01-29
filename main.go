@@ -2,22 +2,32 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/joho/godotenv"
+
 	"twooms/commands"
+	"twooms/llm"
 	"twooms/storage"
 )
 
 func main() {
+	// Load .env file if present (errors ignored - file is optional)
+	godotenv.Load()
+
 	// Initialize storage
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting home directory: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Also try loading from ~/.twooms.env
+	godotenv.Load(filepath.Join(homeDir, ".twooms.env"))
 
 	dbPath := filepath.Join(homeDir, ".twooms.json")
 	store, err := storage.NewJSONStore(dbPath)
@@ -29,6 +39,21 @@ func main() {
 
 	// Set store for commands to use
 	commands.SetStore(store)
+
+	// Initialize LLM client (optional)
+	ctx := context.Background()
+	llmClient, err := llm.NewGeminiClient(ctx)
+	if err != nil {
+		if err == llm.ErrMissingAPIKey {
+			fmt.Fprintf(os.Stderr, "Warning: %v (LLM features disabled)\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error initializing LLM client: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		commands.SetLLMClient(llmClient)
+		defer llmClient.Close()
+	}
 
 	// Start REPL
 	scanner := bufio.NewScanner(os.Stdin)
