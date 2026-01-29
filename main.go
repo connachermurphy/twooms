@@ -1,13 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/chzyer/readline"
 	"github.com/joho/godotenv"
 
 	"twooms/commands"
@@ -55,17 +56,35 @@ func main() {
 		defer llmClient.Close()
 	}
 
-	// Start REPL
-	scanner := bufio.NewScanner(os.Stdin)
+	// Start REPL with readline support
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:          "> ",
+		HistoryLimit:    100,
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing readline: %v\n", err)
+		os.Exit(1)
+	}
+	defer rl.Close()
+
 	fmt.Println("Welcome to Twooms! Type /help for available commands.")
 
 	for {
-		fmt.Print("> ")
-		if !scanner.Scan() {
+		line, err := rl.Readline()
+		if err == readline.ErrInterrupt {
+			continue
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
 			break
 		}
 
-		input := strings.TrimSpace(scanner.Text())
+		input := strings.TrimSpace(line)
 		if input == "" {
 			continue
 		}
