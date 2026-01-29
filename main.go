@@ -70,16 +70,17 @@ func main() {
 			continue
 		}
 
-		if strings.HasPrefix(input, "/") {
-			quit, err := commands.Execute(input)
-			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-			}
-			if quit {
-				break
-			}
-		} else {
-			fmt.Printf("You said: %s\n", input)
+		// Default to /chat if no slash command specified
+		if !strings.HasPrefix(input, "/") {
+			input = "/chat " + input
+		}
+
+		quit, err := commands.Execute(input)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+		if quit {
+			break
 		}
 	}
 }
