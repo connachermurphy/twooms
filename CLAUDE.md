@@ -23,6 +23,15 @@ Run directly without building:
 go run main.go
 ```
 
+## Git Workflow
+
+**Always work on a feature branch**, never commit directly to `main`. Follow this workflow:
+
+1. Create a branch for the issue: `git checkout -b <issue-number>-<short-description>`
+2. Make changes and commit
+3. Push and create a PR: `git push -u origin <branch-name>` then `gh pr create`
+4. After merge, switch back to main and clean up: `git checkout main && git branch -d <branch-name> && git pull`
+
 ## Architecture
 
 The application uses a **command registry pattern** where commands are automatically registered via `init()` functions in individual command files.

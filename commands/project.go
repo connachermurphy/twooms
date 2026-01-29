@@ -32,7 +32,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/projects",
-		Description: "List all projects",
+		Description: "List all projects with their IDs. Use this to find a project's ID when you have the name.",
 		Handler: func(args []string) bool {
 			projects, err := GetStore().ListProjects()
 			if err != nil {

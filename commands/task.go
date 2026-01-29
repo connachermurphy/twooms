@@ -38,7 +38,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/tasks",
-		Description: "List tasks in a project",
+		Description: "List tasks in a project. Call 'projects' first if you only have the project name.",
 		Params: []Param{
 			{Name: "project_id", Type: ParamTypeString, Description: "The ID of the project to list tasks for", Required: true},
 		},

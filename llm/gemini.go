@@ -92,8 +92,9 @@ func (g *GeminiClient) ChatWithTools(ctx context.Context, prompt string, tools [
 	config := DefaultConfig()
 
 	genConfig := &genai.GenerateContentConfig{
-		MaxOutputTokens: config.MaxTokens,
-		Temperature:     genai.Ptr(config.Temperature),
+		MaxOutputTokens:   config.MaxTokens,
+		Temperature:       genai.Ptr(config.Temperature),
+		SystemInstruction: genai.NewContentFromText(getToolSystemPrompt(), genai.RoleUser),
 		Tools: []*genai.Tool{
 			{FunctionDeclarations: tools},
 		},
@@ -177,4 +178,18 @@ func (g *GeminiClient) Close() error {
 	// The genai client doesn't have a Close method, but we implement it
 	// for the interface to support potential future cleanup needs
 	return nil
+}
+
+func getToolSystemPrompt() string {
+	return `You are a helpful task management assistant for Twooms.
+
+IMPORTANT RULES:
+1. When a user refers to a project by NAME (not ID), FIRST call "projects" to find the ID, then use that ID.
+2. When a user refers to a task by NAME, FIRST call the listing tool to find the task's ID.
+3. NEVER ask the user for an ID. Always look it up using available tools.
+4. Project IDs look like "proj-1". Task IDs look like "task-1".
+
+EXAMPLES:
+- "list tasks in Office" -> call projects, find Office's ID, call tasks with that ID
+- "mark documentation task done" -> list projects/tasks to find IDs, then call done`
 }
