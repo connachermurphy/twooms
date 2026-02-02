@@ -7,9 +7,25 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"google.golang.org/genai"
 )
 
+// chatHistory stores the conversation history for the /chat command
+var chatHistory []*genai.Content
+
 func init() {
+	Register(&Command{
+		Name:        "/clearchat",
+		Description: "Clear the chat conversation history",
+		Hidden:      true,
+		Handler: func(args []string) bool {
+			chatHistory = nil
+			fmt.Println("Chat history cleared.")
+			return false
+		},
+	})
+
 	Register(&Command{
 		Name:        "/chat",
 		Description: "Chat with the AI assistant",
@@ -52,11 +68,14 @@ func init() {
 			}
 
 			ctx := context.Background()
-			response, err := client.ChatWithTools(ctx, message, tools, executor)
+			response, newHistory, err := client.ChatWithTools(ctx, message, chatHistory, tools, executor)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
 				return false
 			}
+
+			// Update conversation history
+			chatHistory = newHistory
 
 			fmt.Println(response.Text)
 			return false

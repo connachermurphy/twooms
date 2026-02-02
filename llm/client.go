@@ -20,6 +20,6 @@ type ToolExecutor func(name string, args map[string]any) string
 type Client interface {
 	Chat(ctx context.Context, prompt string) (*Response, error)
 	ChatWithConfig(ctx context.Context, prompt string, config *Config) (*Response, error)
-	ChatWithTools(ctx context.Context, prompt string, tools []*genai.FunctionDeclaration, executor ToolExecutor) (*Response, error)
+	ChatWithTools(ctx context.Context, message string, history []*genai.Content, tools []*genai.FunctionDeclaration, executor ToolExecutor) (*Response, []*genai.Content, error)
 	Close() error
 }

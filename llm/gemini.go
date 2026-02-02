@@ -48,7 +48,9 @@ func (g *GeminiClient) ChatWithConfig(ctx context.Context, prompt string, config
 	}
 
 	if config.System != "" {
-		genConfig.SystemInstruction = genai.NewContentFromText(config.System, genai.RoleUser)
+		genConfig.SystemInstruction = &genai.Content{
+			Parts: []*genai.Part{{Text: config.System}},
+		}
 	}
 
 	result, err := g.client.Models.GenerateContent(ctx, config.Model, genai.Text(prompt), genConfig)
@@ -84,26 +86,28 @@ func (g *GeminiClient) ChatWithConfig(ctx context.Context, prompt string, config
 	}, nil
 }
 
-func (g *GeminiClient) ChatWithTools(ctx context.Context, prompt string, tools []*genai.FunctionDeclaration, executor ToolExecutor) (*Response, error) {
-	if strings.TrimSpace(prompt) == "" {
-		return nil, ErrEmptyPrompt
+func (g *GeminiClient) ChatWithTools(ctx context.Context, message string, history []*genai.Content, tools []*genai.FunctionDeclaration, executor ToolExecutor) (*Response, []*genai.Content, error) {
+	if strings.TrimSpace(message) == "" {
+		return nil, history, ErrEmptyPrompt
 	}
 
 	config := DefaultConfig()
 
 	genConfig := &genai.GenerateContentConfig{
-		MaxOutputTokens:   config.MaxTokens,
-		Temperature:       genai.Ptr(config.Temperature),
-		SystemInstruction: genai.NewContentFromText(getToolSystemPrompt(), genai.RoleUser),
+		MaxOutputTokens: config.MaxTokens,
+		Temperature:     genai.Ptr(config.Temperature),
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{{Text: getToolSystemPrompt()}},
+		},
 		Tools: []*genai.Tool{
 			{FunctionDeclarations: tools},
 		},
 	}
 
-	// Build conversation history
-	contents := []*genai.Content{
-		genai.NewContentFromText(prompt, genai.RoleUser),
-	}
+	// Build conversation contents from history plus new message
+	contents := make([]*genai.Content, len(history))
+	copy(contents, history)
+	contents = append(contents, genai.NewContentFromText(message, genai.RoleUser))
 
 	var totalTokens int64
 
@@ -111,7 +115,7 @@ func (g *GeminiClient) ChatWithTools(ctx context.Context, prompt string, tools [
 	for {
 		result, err := g.client.Models.GenerateContent(ctx, config.Model, contents, genConfig)
 		if err != nil {
-			return nil, err
+			return nil, contents, err
 		}
 
 		if result.UsageMetadata != nil {
@@ -119,7 +123,7 @@ func (g *GeminiClient) ChatWithTools(ctx context.Context, prompt string, tools [
 		}
 
 		if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
-			return nil, ErrNoResponse
+			return nil, contents, ErrNoResponse
 		}
 
 		candidate := result.Candidates[0]
@@ -144,11 +148,14 @@ func (g *GeminiClient) ChatWithTools(ctx context.Context, prompt string, tools [
 				finishReason = string(candidate.FinishReason)
 			}
 
+			// Add model's final response to history
+			contents = append(contents, candidate.Content)
+
 			return &Response{
 				Text:         strings.Join(textParts, ""),
 				FinishReason: finishReason,
 				TokensUsed:   totalTokens,
-			}, nil
+			}, contents, nil
 		}
 
 		// Add model's response to history
