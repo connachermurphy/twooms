@@ -1,6 +1,9 @@
 package storage
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Duration represents a task duration
 type Duration string
@@ -24,6 +27,49 @@ func IsValidDuration(s string) bool {
 		}
 	}
 	return false
+}
+
+// ToMinutes converts a Duration to minutes
+func (d Duration) ToMinutes() int {
+	switch d {
+	case Duration15m:
+		return 15
+	case Duration30m:
+		return 30
+	case Duration1h:
+		return 60
+	case Duration2h:
+		return 120
+	case Duration4h:
+		return 240
+	default:
+		return 0
+	}
+}
+
+// FormatMinutes formats a number of minutes as a human-readable string (e.g., "2h 30m")
+func FormatMinutes(minutes int) string {
+	if minutes == 0 {
+		return "0m"
+	}
+	hours := minutes / 60
+	mins := minutes % 60
+	if hours == 0 {
+		return fmt.Sprintf("%dm", mins)
+	}
+	if mins == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dh %dm", hours, mins)
+}
+
+// TotalDuration calculates the total duration in minutes for a slice of tasks
+func TotalDuration(tasks []*Task) int {
+	total := 0
+	for _, t := range tasks {
+		total += t.Duration.ToMinutes()
+	}
+	return total
 }
 
 // Project represents a parent container for tasks
