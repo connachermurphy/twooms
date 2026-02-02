@@ -188,6 +188,16 @@ func (s *JSONStore) ListTasks(projectID string) ([]*Task, error) {
 	return tasks, nil
 }
 
+// ListAllTasks returns all tasks across all projects
+func (s *JSONStore) ListAllTasks() ([]*Task, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	tasks := make([]*Task, len(s.data.Tasks))
+	copy(tasks, s.data.Tasks)
+	return tasks, nil
+}
+
 // GetTask retrieves a task by ID
 func (s *JSONStore) GetTask(id string) (*Task, error) {
 	s.mu.RLock()
