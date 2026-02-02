@@ -14,6 +14,7 @@ type Store interface {
 	// Task operations
 	CreateTask(projectID, name string) (*Task, error)
 	ListTasks(projectID string) ([]*Task, error)
+	ListAllTasks() ([]*Task, error)
 	GetTask(id string) (*Task, error)
 	UpdateTask(id string, done bool) error
 	SetTaskDueDate(id string, dueDate *time.Time) error
