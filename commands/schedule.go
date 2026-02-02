@@ -21,7 +21,7 @@ func init() {
 				projectID = args[0]
 			}
 
-			today := truncateToDay(time.Now())
+			today := dateOnly(time.Now())
 			tomorrow := today.AddDate(0, 0, 1)
 
 			listTasksInRange("today", today, tomorrow, projectID)
@@ -41,7 +41,7 @@ func init() {
 				projectID = args[0]
 			}
 
-			today := truncateToDay(time.Now())
+			today := dateOnly(time.Now())
 			tomorrow := today.AddDate(0, 0, 1)
 			dayAfter := today.AddDate(0, 0, 2)
 
@@ -62,7 +62,7 @@ func init() {
 				projectID = args[0]
 			}
 
-			today := truncateToDay(time.Now())
+			today := dateOnly(time.Now())
 			weekStart := startOfWeek(today)
 			weekEnd := weekStart.AddDate(0, 0, 7)
 
@@ -72,9 +72,10 @@ func init() {
 	})
 }
 
-// truncateToDay returns the time truncated to the start of the day
-func truncateToDay(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+// dateOnly extracts just the year, month, day as a comparable date in local timezone
+// This ignores the time-of-day and original timezone, treating the date as a calendar date
+func dateOnly(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
 }
 
 // startOfWeek returns the Monday of the week containing the given time
@@ -122,7 +123,7 @@ func listTasksInRange(label string, start, end time.Time, projectID string) {
 		if t.DueDate == nil {
 			continue
 		}
-		due := truncateToDay(*t.DueDate)
+		due := dateOnly(*t.DueDate)
 		if !due.Before(start) && due.Before(end) {
 			filtered = append(filtered, t)
 		}
