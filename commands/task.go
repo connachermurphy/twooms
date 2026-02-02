@@ -69,10 +69,14 @@ func init() {
 				return false
 			}
 
+			// Filter incomplete tasks for duration calculation
+			var incompleteTasks []*storage.Task
 			for _, t := range tasks {
 				status := "[ ]"
 				if t.Done {
 					status = "[✓]"
+				} else {
+					incompleteTasks = append(incompleteTasks, t)
 				}
 
 				// Build extra info string
@@ -90,6 +94,12 @@ func init() {
 				}
 
 				fmt.Printf("  %s [%s] %s%s\n", status, t.ID, t.Name, extraStr)
+			}
+
+			// Show total duration for incomplete tasks
+			totalMinutes := storage.TotalDuration(incompleteTasks)
+			if totalMinutes > 0 {
+				fmt.Printf("\nTotal: %s\n", storage.FormatMinutes(totalMinutes))
 			}
 
 			return false
