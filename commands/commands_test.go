@@ -19,6 +19,9 @@ func TestGenerateToolDefinitions(t *testing.T) {
 		"deltask":    true,
 		"due":        true,
 		"duration":   true,
+		"today":      true,
+		"tomorrow":   true,
+		"week":       true,
 	}
 
 	// Commands that should NOT be generated (hidden)

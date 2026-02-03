@@ -93,7 +93,12 @@ func init() {
 					extraStr = " (" + strings.Join(extras, ", ") + ")"
 				}
 
-				fmt.Printf("  %s [%s] %s%s\n", status, t.ID, t.Name, extraStr)
+				// Highlight overdue tasks in red
+				if isOverdue(t) {
+					fmt.Printf("  %s%s [%s] %s%s%s\n", colorRed, status, t.ID, t.Name, extraStr, colorReset)
+				} else {
+					fmt.Printf("  %s [%s] %s%s\n", status, t.ID, t.Name, extraStr)
+				}
 			}
 
 			// Show total duration for incomplete tasks
