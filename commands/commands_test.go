@@ -12,6 +12,7 @@ func TestGenerateToolDefinitions(t *testing.T) {
 		"project":    true,
 		"projects":   true,
 		"delproject": true,
+		"shortcut":   true,
 		"task":       true,
 		"tasks":      true,
 		"done":       true,

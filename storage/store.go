@@ -10,6 +10,11 @@ type Store interface {
 	ListProjects() ([]*Project, error)
 	GetProject(id string) (*Project, error)
 	DeleteProject(id string) error
+	SetProjectShortcut(projectID, shortcut string) error
+
+	// ID resolution - resolves shortcuts/prefixes to full UUIDs
+	ResolveProjectID(idOrShortcut string) (string, error)
+	ResolveTaskID(idOrPrefix string) (string, error)
 
 	// Task operations
 	CreateTask(projectID, name string) (*Task, error)
