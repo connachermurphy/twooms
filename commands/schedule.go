@@ -8,10 +8,26 @@ import (
 	"twooms/storage"
 )
 
+// ANSI color codes for terminal output
+const (
+	colorRed   = "\033[31m"
+	colorReset = "\033[0m"
+)
+
+// isOverdue returns true if the task has a due date before today and is not done
+func isOverdue(t *storage.Task) bool {
+	if t.Done || t.DueDate == nil {
+		return false
+	}
+	today := dateOnly(time.Now())
+	due := dateOnly(*t.DueDate)
+	return due.Before(today)
+}
+
 func init() {
 	Register(&Command{
 		Name:        "/today",
-		Description: "List tasks due today",
+		Description: "List tasks due today (including overdue)",
 		Params: []Param{
 			{Name: "project_id", Type: ParamTypeString, Description: "Optional project ID to filter by", Required: false},
 		},
@@ -24,7 +40,7 @@ func init() {
 			today := dateOnly(time.Now())
 			tomorrow := today.AddDate(0, 0, 1)
 
-			listTasksInRange("today", today, tomorrow, projectID)
+			listTasksInRange("today", today, tomorrow, projectID, true)
 			return false
 		},
 	})
@@ -45,7 +61,7 @@ func init() {
 			tomorrow := today.AddDate(0, 0, 1)
 			dayAfter := today.AddDate(0, 0, 2)
 
-			listTasksInRange("tomorrow", tomorrow, dayAfter, projectID)
+			listTasksInRange("tomorrow", tomorrow, dayAfter, projectID, false)
 			return false
 		},
 	})
@@ -66,7 +82,7 @@ func init() {
 			weekStart := startOfWeek(today)
 			weekEnd := weekStart.AddDate(0, 0, 7)
 
-			listTasksInRange("this week", weekStart, weekEnd, projectID)
+			listTasksInRange("this week", weekStart, weekEnd, projectID, false)
 			return false
 		},
 	})
@@ -88,7 +104,8 @@ func startOfWeek(t time.Time) time.Time {
 }
 
 // listTasksInRange lists tasks with due dates in the given range [start, end)
-func listTasksInRange(label string, start, end time.Time, projectID string) {
+// If includeOverdue is true, also includes tasks with due dates before start
+func listTasksInRange(label string, start, end time.Time, projectID string, includeOverdue bool) {
 	var tasks []*storage.Task
 	var err error
 
@@ -116,6 +133,7 @@ func listTasksInRange(label string, start, end time.Time, projectID string) {
 
 	// Filter tasks by due date range and incomplete status
 	var filtered []*storage.Task
+	var overdueTasks []*storage.Task
 	for _, t := range tasks {
 		if t.Done {
 			continue
@@ -126,10 +144,15 @@ func listTasksInRange(label string, start, end time.Time, projectID string) {
 		due := dateOnly(*t.DueDate)
 		if !due.Before(start) && due.Before(end) {
 			filtered = append(filtered, t)
+		} else if includeOverdue && due.Before(start) {
+			overdueTasks = append(overdueTasks, t)
 		}
 	}
 
-	if len(filtered) == 0 {
+	// Combine overdue tasks first, then regular tasks
+	allTasks := append(overdueTasks, filtered...)
+
+	if len(allTasks) == 0 {
 		fmt.Println("  No tasks due")
 		return
 	}
@@ -143,7 +166,7 @@ func listTasksInRange(label string, start, end time.Time, projectID string) {
 		}
 	}
 
-	for _, t := range filtered {
+	for _, t := range allTasks {
 		var extras []string
 		if t.Duration != "" {
 			extras = append(extras, string(t.Duration))
@@ -160,11 +183,16 @@ func listTasksInRange(label string, start, end time.Time, projectID string) {
 			extraStr = " (" + strings.Join(extras, ", ") + ")"
 		}
 
-		fmt.Printf("  [ ] [%s] %s%s\n", t.ID, t.Name, extraStr)
+		// Highlight overdue tasks in red
+		if isOverdue(t) {
+			fmt.Printf("  %s[ ] [%s] %s%s%s\n", colorRed, t.ID, t.Name, extraStr, colorReset)
+		} else {
+			fmt.Printf("  [ ] [%s] %s%s\n", t.ID, t.Name, extraStr)
+		}
 	}
 
 	// Show total duration
-	totalMinutes := storage.TotalDuration(filtered)
+	totalMinutes := storage.TotalDuration(allTasks)
 	if totalMinutes > 0 {
 		fmt.Printf("\nTotal: %s\n", storage.FormatMinutes(totalMinutes))
 	}
