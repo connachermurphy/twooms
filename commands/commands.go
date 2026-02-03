@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"google.golang.org/genai"
 	"twooms/llm"
 	"twooms/storage"
 )
@@ -91,9 +90,9 @@ func List() []*Command {
 	return cmds
 }
 
-// GenerateToolDefinitions creates Gemini FunctionDeclarations from registered commands
-func GenerateToolDefinitions() []*genai.FunctionDeclaration {
-	var tools []*genai.FunctionDeclaration
+// GenerateToolDefinitions creates Tool definitions from registered commands
+func GenerateToolDefinitions() []*llm.Tool {
+	var tools []*llm.Tool
 
 	for _, cmd := range registry {
 		if cmd.Hidden {
@@ -101,12 +100,12 @@ func GenerateToolDefinitions() []*genai.FunctionDeclaration {
 		}
 
 		// Build properties and required arrays from Params
-		properties := make(map[string]*genai.Schema)
+		properties := make(map[string]*llm.ToolProperty)
 		var required []string
 
 		for _, p := range cmd.Params {
-			properties[p.Name] = &genai.Schema{
-				Type:        genai.TypeString,
+			properties[p.Name] = &llm.ToolProperty{
+				Type:        "string",
 				Description: p.Description,
 			}
 			if p.Required {
@@ -114,22 +113,22 @@ func GenerateToolDefinitions() []*genai.FunctionDeclaration {
 			}
 		}
 
-		// Create FunctionDeclaration
-		fd := &genai.FunctionDeclaration{
+		// Create Tool
+		tool := &llm.Tool{
 			Name:        strings.TrimPrefix(cmd.Name, "/"),
 			Description: cmd.Description,
 		}
 
 		// Only add Parameters if there are any
 		if len(properties) > 0 {
-			fd.Parameters = &genai.Schema{
-				Type:       genai.TypeObject,
+			tool.Parameters = &llm.ToolParameters{
+				Type:       "object",
 				Properties: properties,
 				Required:   required,
 			}
 		}
 
-		tools = append(tools, fd)
+		tools = append(tools, tool)
 	}
 
 	return tools

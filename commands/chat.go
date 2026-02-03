@@ -7,9 +7,25 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"twooms/llm"
 )
 
+// chatHistory stores the conversation history for the /chat command
+var chatHistory []*llm.Message
+
 func init() {
+	Register(&Command{
+		Name:        "/clearchat",
+		Description: "Clear the chat conversation history",
+		Hidden:      true,
+		Handler: func(args []string) bool {
+			chatHistory = nil
+			fmt.Println("Chat history cleared.")
+			return false
+		},
+	})
+
 	Register(&Command{
 		Name:        "/chat",
 		Description: "Chat with the AI assistant",
@@ -25,7 +41,7 @@ func init() {
 
 			client := GetLLMClient()
 			if client == nil {
-				fmt.Println("Error: LLM client not available. Set GEMINI_API_KEY environment variable.")
+				fmt.Println("Error: LLM client not available. Set OPENROUTER_API_KEY environment variable.")
 				return false
 			}
 
@@ -52,11 +68,14 @@ func init() {
 			}
 
 			ctx := context.Background()
-			response, err := client.ChatWithTools(ctx, message, tools, executor)
+			response, newHistory, err := client.ChatWithTools(ctx, message, chatHistory, tools, executor)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
 				return false
 			}
+
+			// Update conversation history
+			chatHistory = newHistory
 
 			fmt.Println(response.Text)
 			return false
