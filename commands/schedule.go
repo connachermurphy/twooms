@@ -34,7 +34,13 @@ func init() {
 		Handler: func(args []string) bool {
 			var projectID string
 			if len(args) > 0 {
-				projectID = args[0]
+				// Resolve project ID
+				resolved, err := GetStore().ResolveProjectID(args[0])
+				if err != nil {
+					fmt.Printf("Error: %v\n", err)
+					return false
+				}
+				projectID = resolved
 			}
 
 			today := dateOnly(time.Now())
@@ -54,7 +60,13 @@ func init() {
 		Handler: func(args []string) bool {
 			var projectID string
 			if len(args) > 0 {
-				projectID = args[0]
+				// Resolve project ID
+				resolved, err := GetStore().ResolveProjectID(args[0])
+				if err != nil {
+					fmt.Printf("Error: %v\n", err)
+					return false
+				}
+				projectID = resolved
 			}
 
 			today := dateOnly(time.Now())
@@ -75,7 +87,13 @@ func init() {
 		Handler: func(args []string) bool {
 			var projectID string
 			if len(args) > 0 {
-				projectID = args[0]
+				// Resolve project ID
+				resolved, err := GetStore().ResolveProjectID(args[0])
+				if err != nil {
+					fmt.Printf("Error: %v\n", err)
+					return false
+				}
+				projectID = resolved
 			}
 
 			today := dateOnly(time.Now())
@@ -183,11 +201,14 @@ func listTasksInRange(label string, start, end time.Time, projectID string, incl
 			extraStr = " (" + strings.Join(extras, ", ") + ")"
 		}
 
+		// Show first 8 chars of task UUID
+		shortID := t.ID[:8]
+
 		// Highlight overdue tasks in red
 		if isOverdue(t) {
-			fmt.Printf("  %s[ ] [%s] %s%s%s\n", colorRed, t.ID, t.Name, extraStr, colorReset)
+			fmt.Printf("  %s[ ] [%s] %s%s%s\n", colorRed, shortID, t.Name, extraStr, colorReset)
 		} else {
-			fmt.Printf("  [ ] [%s] %s%s\n", t.ID, t.Name, extraStr)
+			fmt.Printf("  [ ] [%s] %s%s\n", shortID, t.Name, extraStr)
 		}
 	}
 

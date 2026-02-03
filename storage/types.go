@@ -76,6 +76,7 @@ func TotalDuration(tasks []*Task) int {
 type Project struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
+	Shortcut  string    `json:"shortcut,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

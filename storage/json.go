@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 )
@@ -20,7 +23,26 @@ type jsonData struct {
 	Tasks      []*Task    `json:"tasks"`
 	NextProjID int        `json:"next_proj_id"`
 	NextTaskID int        `json:"next_task_id"`
+	Migrated   bool       `json:"migrated"`
 }
+
+// generateUUID generates a UUID v4 using crypto/rand
+func generateUUID() string {
+	uuid := make([]byte, 16)
+	_, err := rand.Read(uuid)
+	if err != nil {
+		// Fallback to a timestamp-based ID if crypto/rand fails
+		return fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+	// Set version (4) and variant (RFC 4122)
+	uuid[6] = (uuid[6] & 0x0f) | 0x40
+	uuid[8] = (uuid[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:16])
+}
+
+// shortcutRegex validates shortcut format: alphanumeric and hyphens, 1-20 chars
+var shortcutRegex = regexp.MustCompile(`^[a-zA-Z0-9-]{1,20}$`)
 
 // NewJSONStore creates or opens a JSON-backed store
 func NewJSONStore(filename string) (*JSONStore, error) {
@@ -31,17 +53,58 @@ func NewJSONStore(filename string) (*JSONStore, error) {
 			Tasks:      []*Task{},
 			NextProjID: 1,
 			NextTaskID: 1,
+			Migrated:   true, // New stores are already "migrated"
 		},
 	}
 
 	// Try to load existing file
 	if _, err := os.Stat(filename); err == nil {
+		// Create fresh data struct for loading (Migrated defaults to false)
+		store.data = &jsonData{}
 		if err := store.load(); err != nil {
 			return nil, fmt.Errorf("failed to load store: %w", err)
+		}
+		// Migrate old-style IDs to UUIDs
+		if err := store.migrate(); err != nil {
+			return nil, fmt.Errorf("failed to migrate store: %w", err)
 		}
 	}
 
 	return store, nil
+}
+
+// migrate converts old proj-N/task-N IDs to UUIDs
+func (s *JSONStore) migrate() error {
+	if s.data.Migrated {
+		return nil
+	}
+
+	// Build mapping from old project IDs to new UUIDs
+	projectIDMap := make(map[string]string)
+
+	for _, p := range s.data.Projects {
+		if strings.HasPrefix(p.ID, "proj-") {
+			newID := generateUUID()
+			projectIDMap[p.ID] = newID
+			p.ID = newID
+			// Set shortcut to first 8 chars of UUID
+			p.Shortcut = newID[:8]
+		}
+	}
+
+	// Update tasks: new UUIDs and update ProjectID references
+	for _, t := range s.data.Tasks {
+		if strings.HasPrefix(t.ID, "task-") {
+			t.ID = generateUUID()
+		}
+		// Update ProjectID if it was remapped
+		if newProjectID, ok := projectIDMap[t.ProjectID]; ok {
+			t.ProjectID = newProjectID
+		}
+	}
+
+	s.data.Migrated = true
+	return s.save()
 }
 
 func (s *JSONStore) load() error {
@@ -67,12 +130,13 @@ func (s *JSONStore) CreateProject(name string) (*Project, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	id := generateUUID()
 	project := &Project{
-		ID:        fmt.Sprintf("proj-%d", s.data.NextProjID),
+		ID:        id,
 		Name:      name,
+		Shortcut:  id[:8], // Default shortcut is first 8 chars of UUID
 		CreatedAt: time.Now(),
 	}
-	s.data.NextProjID++
 	s.data.Projects = append(s.data.Projects, project)
 
 	if err := s.save(); err != nil {
@@ -157,13 +221,12 @@ func (s *JSONStore) CreateTask(projectID, name string) (*Task, error) {
 	}
 
 	task := &Task{
-		ID:        fmt.Sprintf("task-%d", s.data.NextTaskID),
+		ID:        generateUUID(),
 		ProjectID: projectID,
 		Name:      name,
 		Done:      false,
 		CreatedAt: time.Now(),
 	}
-	s.data.NextTaskID++
 	s.data.Tasks = append(s.data.Tasks, task)
 
 	if err := s.save(); err != nil {
@@ -270,6 +333,105 @@ func (s *JSONStore) DeleteTask(id string) error {
 	}
 
 	return fmt.Errorf("task not found: %s", id)
+}
+
+// ResolveProjectID resolves a project identifier to its full UUID
+// It checks: exact UUID match → shortcut match → UUID prefix (min 6 chars)
+func (s *JSONStore) ResolveProjectID(idOrShortcut string) (string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// First, try exact UUID match
+	for _, p := range s.data.Projects {
+		if p.ID == idOrShortcut {
+			return p.ID, nil
+		}
+	}
+
+	// Second, try shortcut match
+	for _, p := range s.data.Projects {
+		if p.Shortcut == idOrShortcut {
+			return p.ID, nil
+		}
+	}
+
+	// Third, try UUID prefix match (min 6 chars)
+	if len(idOrShortcut) >= 6 {
+		var matches []*Project
+		for _, p := range s.data.Projects {
+			if strings.HasPrefix(p.ID, idOrShortcut) {
+				matches = append(matches, p)
+			}
+		}
+		if len(matches) == 1 {
+			return matches[0].ID, nil
+		}
+		if len(matches) > 1 {
+			return "", fmt.Errorf("ambiguous project ID prefix: %s (matches %d projects)", idOrShortcut, len(matches))
+		}
+	}
+
+	return "", fmt.Errorf("project not found: %s", idOrShortcut)
+}
+
+// ResolveTaskID resolves a task identifier to its full UUID
+// It checks: exact UUID match → UUID prefix (min 6 chars)
+func (s *JSONStore) ResolveTaskID(idOrPrefix string) (string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// First, try exact UUID match
+	for _, t := range s.data.Tasks {
+		if t.ID == idOrPrefix {
+			return t.ID, nil
+		}
+	}
+
+	// Second, try UUID prefix match (min 6 chars)
+	if len(idOrPrefix) >= 6 {
+		var matches []*Task
+		for _, t := range s.data.Tasks {
+			if strings.HasPrefix(t.ID, idOrPrefix) {
+				matches = append(matches, t)
+			}
+		}
+		if len(matches) == 1 {
+			return matches[0].ID, nil
+		}
+		if len(matches) > 1 {
+			return "", fmt.Errorf("ambiguous task ID prefix: %s (matches %d tasks)", idOrPrefix, len(matches))
+		}
+	}
+
+	return "", fmt.Errorf("task not found: %s", idOrPrefix)
+}
+
+// SetProjectShortcut sets a custom shortcut for a project
+func (s *JSONStore) SetProjectShortcut(projectID, shortcut string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Validate shortcut format
+	if !shortcutRegex.MatchString(shortcut) {
+		return fmt.Errorf("invalid shortcut: must be 1-20 alphanumeric characters or hyphens")
+	}
+
+	// Check for shortcut conflicts
+	for _, p := range s.data.Projects {
+		if p.ID != projectID && p.Shortcut == shortcut {
+			return fmt.Errorf("shortcut already in use by project: %s", p.Name)
+		}
+	}
+
+	// Find and update the project
+	for _, p := range s.data.Projects {
+		if p.ID == projectID {
+			p.Shortcut = shortcut
+			return s.save()
+		}
+	}
+
+	return fmt.Errorf("project not found: %s", projectID)
 }
 
 // Close closes the store

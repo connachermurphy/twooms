@@ -25,7 +25,7 @@ func init() {
 				return false
 			}
 
-			fmt.Printf("Created project: %s (ID: %s)\n", project.Name, project.ID)
+			fmt.Printf("Created project: %s (shortcut: %s)\n", project.Name, project.Shortcut)
 			return false
 		},
 	})
@@ -57,7 +57,7 @@ func init() {
 				}
 
 				fmt.Printf("  [%s] %s (%d/%d tasks complete)\n",
-					p.ID, p.Name, done, len(tasks))
+					p.Shortcut, p.Name, done, len(tasks))
 			}
 
 			return false
@@ -76,13 +76,28 @@ func init() {
 				return false
 			}
 
-			projectID := args[0]
+			projectRef := args[0]
+
+			// Resolve project ID
+			projectID, err := GetStore().ResolveProjectID(projectRef)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
+			// Get project for display
+			project, err := GetStore().GetProject(projectID)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
 			if err := GetStore().DeleteProject(projectID); err != nil {
 				fmt.Printf("Error deleting project: %v\n", err)
 				return false
 			}
 
-			fmt.Printf("Deleted project: %s\n", projectID)
+			fmt.Printf("Deleted project: %s\n", project.Name)
 			return false
 		},
 	})

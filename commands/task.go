@@ -22,8 +22,15 @@ func init() {
 				return false
 			}
 
-			projectID := args[0]
+			projectRef := args[0]
 			taskName := strings.Join(args[1:], " ")
+
+			// Resolve project ID
+			projectID, err := GetStore().ResolveProjectID(projectRef)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
 
 			task, err := GetStore().CreateTask(projectID, taskName)
 			if err != nil {
@@ -31,7 +38,7 @@ func init() {
 				return false
 			}
 
-			fmt.Printf("Created task: %s (ID: %s)\n", task.Name, task.ID)
+			fmt.Printf("Created task: %s (ID: %s)\n", task.Name, task.ID[:8])
 			return false
 		},
 	})
@@ -48,7 +55,14 @@ func init() {
 				return false
 			}
 
-			projectID := args[0]
+			projectRef := args[0]
+
+			// Resolve project ID
+			projectID, err := GetStore().ResolveProjectID(projectRef)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
 
 			// Get project info
 			project, err := GetStore().GetProject(projectID)
@@ -93,11 +107,14 @@ func init() {
 					extraStr = " (" + strings.Join(extras, ", ") + ")"
 				}
 
+				// Show first 8 chars of task UUID
+				shortID := t.ID[:8]
+
 				// Highlight overdue tasks in red
 				if isOverdue(t) {
-					fmt.Printf("  %s%s [%s] %s%s%s\n", colorRed, status, t.ID, t.Name, extraStr, colorReset)
+					fmt.Printf("  %s%s [%s] %s%s%s\n", colorRed, status, shortID, t.Name, extraStr, colorReset)
 				} else {
-					fmt.Printf("  %s [%s] %s%s\n", status, t.ID, t.Name, extraStr)
+					fmt.Printf("  %s [%s] %s%s\n", status, shortID, t.Name, extraStr)
 				}
 			}
 
@@ -123,13 +140,28 @@ func init() {
 				return false
 			}
 
-			taskID := args[0]
+			taskRef := args[0]
+
+			// Resolve task ID
+			taskID, err := GetStore().ResolveTaskID(taskRef)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
+			// Get task for display
+			task, err := GetStore().GetTask(taskID)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
 			if err := GetStore().UpdateTask(taskID, true); err != nil {
 				fmt.Printf("Error: %v\n", err)
 				return false
 			}
 
-			fmt.Printf("Marked task %s as done ✓\n", taskID)
+			fmt.Printf("Marked task %s as done ✓\n", task.Name)
 			return false
 		},
 	})
@@ -146,13 +178,28 @@ func init() {
 				return false
 			}
 
-			taskID := args[0]
+			taskRef := args[0]
+
+			// Resolve task ID
+			taskID, err := GetStore().ResolveTaskID(taskRef)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
+			// Get task for display
+			task, err := GetStore().GetTask(taskID)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
 			if err := GetStore().UpdateTask(taskID, false); err != nil {
 				fmt.Printf("Error: %v\n", err)
 				return false
 			}
 
-			fmt.Printf("Marked task %s as not done\n", taskID)
+			fmt.Printf("Marked task %s as not done\n", task.Name)
 			return false
 		},
 	})
@@ -169,13 +216,28 @@ func init() {
 				return false
 			}
 
-			taskID := args[0]
+			taskRef := args[0]
+
+			// Resolve task ID
+			taskID, err := GetStore().ResolveTaskID(taskRef)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
+			// Get task for display
+			task, err := GetStore().GetTask(taskID)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
 			if err := GetStore().DeleteTask(taskID); err != nil {
 				fmt.Printf("Error: %v\n", err)
 				return false
 			}
 
-			fmt.Printf("Deleted task: %s\n", taskID)
+			fmt.Printf("Deleted task: %s\n", task.Name)
 			return false
 		},
 	})
@@ -193,15 +255,29 @@ func init() {
 				return false
 			}
 
-			taskID := args[0]
+			taskRef := args[0]
 			dateStr := args[1]
+
+			// Resolve task ID
+			taskID, err := GetStore().ResolveTaskID(taskRef)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
+			// Get task for display
+			task, err := GetStore().GetTask(taskID)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
 
 			if dateStr == "none" {
 				if err := GetStore().SetTaskDueDate(taskID, nil); err != nil {
 					fmt.Printf("Error: %v\n", err)
 					return false
 				}
-				fmt.Printf("Cleared due date for task %s\n", taskID)
+				fmt.Printf("Cleared due date for task %s\n", task.Name)
 				return false
 			}
 
@@ -216,7 +292,7 @@ func init() {
 				return false
 			}
 
-			fmt.Printf("Set due date for task %s to %s\n", taskID, dateStr)
+			fmt.Printf("Set due date for task %s to %s\n", task.Name, dateStr)
 			return false
 		},
 	})
@@ -234,11 +310,25 @@ func init() {
 				return false
 			}
 
-			taskID := args[0]
+			taskRef := args[0]
 			durationStr := args[1]
 
 			if !storage.IsValidDuration(durationStr) {
 				fmt.Println("Error: Invalid duration. Use 15m, 30m, 1h, 2h, or 4h")
+				return false
+			}
+
+			// Resolve task ID
+			taskID, err := GetStore().ResolveTaskID(taskRef)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return false
+			}
+
+			// Get task for display
+			task, err := GetStore().GetTask(taskID)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
 				return false
 			}
 
@@ -247,7 +337,7 @@ func init() {
 				return false
 			}
 
-			fmt.Printf("Set duration for task %s to %s\n", taskID, durationStr)
+			fmt.Printf("Set duration for task %s to %s\n", task.Name, durationStr)
 			return false
 		},
 	})
