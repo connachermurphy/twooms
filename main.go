@@ -43,7 +43,7 @@ func main() {
 
 	// Initialize LLM client (optional)
 	ctx := context.Background()
-	llmClient, err := llm.NewGeminiClient(ctx)
+	llmClient, err := llm.NewOpenRouterClient(ctx)
 	if err != nil {
 		if err == llm.ErrMissingAPIKey {
 			fmt.Fprintf(os.Stderr, "Warning: %v (LLM features disabled)\n", err)

@@ -8,11 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"google.golang.org/genai"
+	"twooms/llm"
 )
 
 // chatHistory stores the conversation history for the /chat command
-var chatHistory []*genai.Content
+var chatHistory []*llm.Message
 
 func init() {
 	Register(&Command{
@@ -41,7 +41,7 @@ func init() {
 
 			client := GetLLMClient()
 			if client == nil {
-				fmt.Println("Error: LLM client not available. Set GEMINI_API_KEY environment variable.")
+				fmt.Println("Error: LLM client not available. Set OPENROUTER_API_KEY environment variable.")
 				return false
 			}
 
