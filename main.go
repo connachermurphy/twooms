@@ -94,9 +94,28 @@ func main() {
 			input = "/chat " + input
 		}
 
-		quit, err := commands.Execute(input)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+		// Check if this is a direct command (not /chat) that should be recorded in chat history
+		isDirectCommand := !strings.HasPrefix(strings.ToLower(input), "/chat")
+
+		var quit bool
+		var cmdErr error
+		if isDirectCommand {
+			// Execute with output capture for direct commands
+			var output string
+			quit, output, cmdErr = commands.ExecuteWithOutput(input)
+			if cmdErr == nil && output != "" {
+				// Print the output (since it was captured)
+				fmt.Println(output)
+				// Add to chat history for LLM context
+				commands.AddCommandContext(input, output)
+			}
+		} else {
+			// Execute normally for /chat commands
+			quit, cmdErr = commands.Execute(input)
+		}
+
+		if cmdErr != nil {
+			fmt.Printf("Error: %v\n", cmdErr)
 		}
 		if quit {
 			break

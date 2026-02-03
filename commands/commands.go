@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"twooms/llm"
@@ -79,6 +82,38 @@ func Execute(input string) (bool, error) {
 	}
 
 	return cmd.Handler(args), nil
+}
+
+// ExecuteWithOutput runs a command and returns its captured stdout output
+func ExecuteWithOutput(input string) (quit bool, output string, err error) {
+	// Save original stdout
+	oldStdout := os.Stdout
+
+	// Create a pipe
+	r, w, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		return false, "", fmt.Errorf("failed to create pipe: %w", pipeErr)
+	}
+
+	// Redirect stdout to the pipe
+	os.Stdout = w
+
+	// Run the command
+	quit, err = Execute(input)
+
+	// Close the write end of the pipe
+	w.Close()
+
+	// Restore stdout
+	os.Stdout = oldStdout
+
+	// Read captured output
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	r.Close()
+
+	output = strings.TrimSpace(buf.String())
+	return quit, output, err
 }
 
 // List returns all registered commands
