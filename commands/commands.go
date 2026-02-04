@@ -97,19 +97,22 @@ func ExecuteWithOutput(input string) (quit bool, output string, err error) {
 
 	// Redirect stdout to the pipe
 	os.Stdout = w
+	defer func() { os.Stdout = oldStdout }()
+
+	// Read in a goroutine to prevent pipe buffer deadlock
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		io.Copy(&buf, r)
+		close(done)
+	}()
 
 	// Run the command
 	quit, err = Execute(input)
 
-	// Close the write end of the pipe
+	// Close the write end of the pipe and wait for read to complete
 	w.Close()
-
-	// Restore stdout
-	os.Stdout = oldStdout
-
-	// Read captured output
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	<-done
 	r.Close()
 
 	output = strings.TrimSpace(buf.String())
