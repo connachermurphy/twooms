@@ -33,6 +33,7 @@ type Command struct {
 	Handler     func(args []string) bool // returns true to quit
 	Params      []Param                  // parameter definitions for tool generation
 	Hidden      bool                     // if true, exclude from tool generation
+	Destructive bool                     // if true, requires confirmation when called via tool
 }
 
 var (
@@ -126,6 +127,14 @@ func List() []*Command {
 		cmds = append(cmds, cmd)
 	}
 	return cmds
+}
+
+// GetByName returns a command by name (with or without leading /)
+func GetByName(name string) *Command {
+	if !strings.HasPrefix(name, "/") {
+		name = "/" + name
+	}
+	return registry[strings.ToLower(name)]
 }
 
 // GenerateToolDefinitions creates Tool definitions from registered commands

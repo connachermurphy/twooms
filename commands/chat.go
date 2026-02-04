@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -177,6 +178,16 @@ func init() {
 
 			// Create the tool executor that runs commands and captures output
 			executor := func(name string, fnArgs map[string]any) string {
+				// Check if command is destructive and requires confirmation
+				cmd := GetByName(name)
+				if cmd != nil && cmd.Destructive {
+					// Get description of what will be deleted
+					description := getDestructiveDescription(name, fnArgs)
+					if !confirmDestructiveAction(name, description) {
+						return "Action cancelled by user."
+					}
+				}
+
 				// Convert function arguments to command args slice
 				cmdArgs := convertArgsToSlice(name, fnArgs)
 
@@ -313,4 +324,64 @@ func captureOutput(fn func()) string {
 	r.Close()
 
 	return strings.TrimSpace(buf.String())
+}
+
+// getDestructiveDescription returns a human-readable description of what will be deleted
+func getDestructiveDescription(cmdName string, args map[string]any) string {
+	store := GetStore()
+	if store == nil {
+		return ""
+	}
+
+	switch cmdName {
+	case "delproject":
+		if projectRef, ok := args["project_id"].(string); ok {
+			projectID, err := store.ResolveProjectID(projectRef)
+			if err != nil {
+				return fmt.Sprintf("project '%s'", projectRef)
+			}
+			project, err := store.GetProject(projectID)
+			if err != nil {
+				return fmt.Sprintf("project '%s'", projectRef)
+			}
+			tasks, _ := store.ListTasks(projectID)
+			if len(tasks) > 0 {
+				return fmt.Sprintf("project '%s' and its %d task(s)", project.Name, len(tasks))
+			}
+			return fmt.Sprintf("project '%s'", project.Name)
+		}
+	case "deltask":
+		if taskRef, ok := args["task_id"].(string); ok {
+			taskID, err := store.ResolveTaskID(taskRef)
+			if err != nil {
+				return fmt.Sprintf("task '%s'", taskRef)
+			}
+			task, err := store.GetTask(taskID)
+			if err != nil {
+				return fmt.Sprintf("task '%s'", taskRef)
+			}
+			return fmt.Sprintf("task '%s'", task.Name)
+		}
+	}
+	return ""
+}
+
+// confirmDestructiveAction prompts the user to confirm a destructive action
+func confirmDestructiveAction(cmdName string, description string) bool {
+	if description == "" {
+		description = "this item"
+	}
+
+	fmt.Printf("\nConfirm delete %s? [y/N]: ", description)
+
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		response := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		if response == "y" || response == "yes" {
+			return true
+		}
+	}
+
+	fmt.Println("Cancelled.")
+	return false
 }
