@@ -214,6 +214,7 @@ func init() {
 	Register(&Command{
 		Name:        "/deltask",
 		Description: "Delete a task",
+		Destructive: true,
 		Params: []Param{
 			{Name: "task_id", Type: ParamTypeString, Description: "The ID of the task to delete", Required: true},
 		},

@@ -67,6 +67,7 @@ func init() {
 	Register(&Command{
 		Name:        "/delproject",
 		Description: "Delete a project and its tasks",
+		Destructive: true,
 		Params: []Param{
 			{Name: "project_id", Type: ParamTypeString, Description: "The ID of the project to delete", Required: true},
 		},
