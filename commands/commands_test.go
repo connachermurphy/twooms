@@ -7,31 +7,31 @@ import (
 func TestGenerateToolDefinitions(t *testing.T) {
 	tools := GenerateToolDefinitions()
 
-	// Expected tool names (commands that are NOT hidden)
+	// Expected tool names (commands that are NOT hidden or destructive)
 	expectedTools := map[string]bool{
-		"project":    true,
-		"projects":   true,
-		"delproject": true,
-		"shortcut":   true,
-		"task":       true,
-		"tasks":      true,
-		"done":       true,
-		"undone":     true,
-		"deltask":    true,
-		"due":        true,
-		"duration":   true,
-		"today":      true,
-		"tomorrow":   true,
-		"week":       true,
+		"project":  true,
+		"projects": true,
+		"shortcut": true,
+		"task":     true,
+		"tasks":    true,
+		"done":     true,
+		"undone":   true,
+		"due":      true,
+		"duration": true,
+		"today":    true,
+		"tomorrow": true,
+		"week":     true,
 	}
 
-	// Commands that should NOT be generated (hidden)
-	hiddenTools := map[string]bool{
-		"quit": true,
-		"exit": true,
-		"help": true,
-		"echo": true,
-		"chat": true,
+	// Commands that should NOT be generated (hidden or destructive)
+	excludedTools := map[string]bool{
+		"quit":       true,
+		"exit":       true,
+		"help":       true,
+		"echo":       true,
+		"chat":       true,
+		"delproject": true, // destructive
+		"deltask":    true, // destructive
 	}
 
 	// Check that expected tools are present
@@ -39,9 +39,9 @@ func TestGenerateToolDefinitions(t *testing.T) {
 	for _, tool := range tools {
 		foundTools[tool.Name] = true
 
-		// Verify hidden tools are not present
-		if hiddenTools[tool.Name] {
-			t.Errorf("Hidden tool %q should not be in generated tools", tool.Name)
+		// Verify excluded tools are not present
+		if excludedTools[tool.Name] {
+			t.Errorf("Excluded tool %q should not be in generated tools", tool.Name)
 		}
 	}
 
@@ -93,18 +93,17 @@ func TestToolParameterDefinitions(t *testing.T) {
 	}
 
 	// Test specific commands have correct parameters
+	// Note: delproject and deltask are excluded (Destructive: true)
 	testCases := []struct {
 		name           string
 		expectedParams []string
 	}{
 		{"project", []string{"name"}},
 		{"projects", nil}, // no params
-		{"delproject", []string{"project_id"}},
 		{"task", []string{"project_id", "task_name"}},
 		{"tasks", []string{"project_id"}},
 		{"done", []string{"task_id"}},
 		{"undone", []string{"task_id"}},
-		{"deltask", []string{"task_id"}},
 		{"due", []string{"task_id", "date"}},
 		{"duration", []string{"task_id", "duration"}},
 	}
