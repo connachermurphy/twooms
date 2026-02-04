@@ -45,7 +45,8 @@ IMPORTANT RULES:
 4. When users refer to "that task" or "the project I just created", use context from [Command executed] messages.
 5. When setting due dates: "today" = %s, "tomorrow" = the next day, etc.
 6. Tool outputs are ALREADY shown to the user. After using tools, just say "Done." or give a one-sentence summary. Do NOT repeat or list the tool output.
-7. Be concise since this is a terminal application.`, today, weekday, today)
+7. Be concise since this is a terminal application.
+8. When creating a task and setting its properties (duration, due date), call "task" FIRST and wait for the result to get the task ID, then call duration/due with that ID. Do NOT call them in parallel.`, today, weekday, today)
 }
 
 // ensureSystemPrompt adds the system prompt if chat history is empty
