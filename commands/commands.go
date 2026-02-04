@@ -33,6 +33,7 @@ type Command struct {
 	Handler     func(args []string) bool // returns true to quit
 	Params      []Param                  // parameter definitions for tool generation
 	Hidden      bool                     // if true, exclude from tool generation
+	Destructive bool                     // if true, exclude from tool generation (destructive actions)
 }
 
 var (
@@ -133,7 +134,7 @@ func GenerateToolDefinitions() []*llm.Tool {
 	var tools []*llm.Tool
 
 	for _, cmd := range registry {
-		if cmd.Hidden {
+		if cmd.Hidden || cmd.Destructive {
 			continue
 		}
 
