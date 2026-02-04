@@ -201,8 +201,11 @@ func listTasksInRange(label string, start, end time.Time, projectID string, incl
 			extraStr = " (" + strings.Join(extras, ", ") + ")"
 		}
 
-		// Show first 8 chars of task UUID
-		shortID := t.ID[:8]
+		// Show first 8 chars of task UUID (or full ID if shorter)
+		shortID := t.ID
+		if len(t.ID) > 8 {
+			shortID = t.ID[:8]
+		}
 
 		// Highlight overdue tasks in red
 		if isOverdue(t) {

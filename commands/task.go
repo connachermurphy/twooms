@@ -38,7 +38,11 @@ func init() {
 				return false
 			}
 
-			fmt.Printf("Created task: %s (ID: %s)\n", task.Name, task.ID[:8])
+			shortID := task.ID
+			if len(task.ID) > 8 {
+				shortID = task.ID[:8]
+			}
+			fmt.Printf("Created task: %s (ID: %s)\n", task.Name, shortID)
 			return false
 		},
 	})
@@ -107,8 +111,11 @@ func init() {
 					extraStr = " (" + strings.Join(extras, ", ") + ")"
 				}
 
-				// Show first 8 chars of task UUID
-				shortID := t.ID[:8]
+				// Show first 8 chars of task UUID (or full ID if shorter)
+				shortID := t.ID
+				if len(t.ID) > 8 {
+					shortID = t.ID[:8]
+				}
 
 				// Highlight overdue tasks in red
 				if isOverdue(t) {

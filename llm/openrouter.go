@@ -27,7 +27,9 @@ func NewOpenRouterClient(ctx context.Context) (*OpenRouterClient, error) {
 
 	return &OpenRouterClient{
 		apiKey:     apiKey,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{
+			Timeout: 120 * time.Second,
+		},
 	}, nil
 }
 
@@ -71,11 +73,9 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 	orTools := convertToolsToOpenRouter(tools)
 
 	// Build messages from history plus new message
-	messages := []openRouterMessage{
-		{Role: "system", Content: getToolSystemPrompt()},
-	}
+	var messages []openRouterMessage
 
-	// Add history
+	// Add history (which should include a system prompt from the caller)
 	for _, msg := range history {
 		messages = append(messages, convertMessageToOpenRouter(msg))
 	}
@@ -88,6 +88,8 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 
 	var totalTokens, totalInputTokens, totalOutputTokens int64
 	var totalCost float64
+	var accumulatedContent strings.Builder
+	var toolResults []string // Track tool results for fallback response
 
 	// Tool calling loop
 	for {
@@ -106,6 +108,14 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 		}
 
 		choice := resp.choices[0]
+
+		// Accumulate any content from this response
+		if choice.Message.Content != "" {
+			if accumulatedContent.Len() > 0 {
+				accumulatedContent.WriteString(" ")
+			}
+			accumulatedContent.WriteString(choice.Message.Content)
+		}
 
 		// Check for tool calls
 		if len(choice.Message.ToolCalls) > 0 {
@@ -135,6 +145,7 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 				json.Unmarshal([]byte(tc.Function.Arguments), &args)
 
 				result := executor(tc.Function.Name, args)
+				toolResults = append(toolResults, result)
 
 				// Add tool response to messages
 				messages = append(messages, openRouterMessage{
@@ -154,15 +165,23 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 			continue
 		}
 
-		// No tool calls - return the text response
+		// No tool calls - return the accumulated text response
+		finalContent := strings.TrimSpace(accumulatedContent.String())
+
+		// If no text content but tools were called, provide a simple confirmation
+		// (The actual tool outputs are printed by the executor as they happen)
+		if finalContent == "" && len(toolResults) > 0 {
+			finalContent = "Done."
+		}
+
 		assistantMsg := &Message{
 			Role:    "assistant",
-			Content: choice.Message.Content,
+			Content: finalContent,
 		}
 		newHistory = append(newHistory, assistantMsg)
 
 		return &Response{
-			Text:         choice.Message.Content,
+			Text:         finalContent,
 			FinishReason: choice.FinishReason,
 			TokensUsed:   totalTokens,
 			InputTokens:  totalInputTokens,
@@ -297,10 +316,19 @@ func (c *OpenRouterClient) sendRequestWithTools(ctx context.Context, config *Con
 			TotalTokens      int64   `json:"total_tokens"`
 			Cost             float64 `json:"cost"`
 		} `json:"usage"`
+		Error *struct {
+			Message string `json:"message"`
+			Code    string `json:"code"`
+		} `json:"error"`
 	}
 
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	// Check for error in response body (some APIs return 200 with error in body)
+	if result.Error != nil {
+		return nil, fmt.Errorf("API error: %s (code: %s)", result.Error.Message, result.Error.Code)
 	}
 
 	return &openRouterResponse{
@@ -368,23 +396,3 @@ func convertMessageToOpenRouter(msg *Message) openRouterMessage {
 	return orMsg
 }
 
-func getToolSystemPrompt() string {
-	today := time.Now().Format("2006-01-02")
-	weekday := time.Now().Weekday().String()
-
-	return fmt.Sprintf(`You are a helpful task management assistant for Twooms.
-
-TODAY'S DATE: %s (%s)
-
-IMPORTANT RULES:
-1. When a user refers to a project by NAME (not ID), FIRST call "projects" to find the ID, then use that ID.
-2. When a user refers to a task by NAME, FIRST call the listing tool to find the task's ID.
-3. NEVER ask the user for an ID. Always look it up using available tools.
-4. Project IDs look like "proj-1". Task IDs look like "task-1".
-5. When setting due dates, use the current date above. "Today" means %s, "tomorrow" means the next day, etc.
-
-EXAMPLES:
-- "list tasks in Office" -> call projects, find Office's ID, call tasks with that ID
-- "mark documentation task done" -> list projects/tasks to find IDs, then call done
-- "due today" -> use date %s`, today, weekday, today, today)
-}
