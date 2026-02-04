@@ -175,6 +175,14 @@ func init() {
 			message := strings.Join(args, " ")
 			tools := GenerateToolDefinitions()
 
+			// Sync debug mode with the LLM client
+			client.SetDebug(IsDebugMode())
+
+			if IsDebugMode() {
+				fmt.Printf("[DEBUG] Chat history: %d messages\n", len(chatHistory))
+				fmt.Printf("[DEBUG] Available tools: %d\n", len(tools))
+			}
+
 			// Create the tool executor that runs commands and captures output
 			executor := func(name string, fnArgs map[string]any) string {
 				// Convert function arguments to command args slice

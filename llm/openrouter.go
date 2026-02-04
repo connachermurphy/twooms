@@ -17,6 +17,7 @@ const openRouterURL = "https://openrouter.ai/api/v1/chat/completions"
 type OpenRouterClient struct {
 	apiKey     string
 	httpClient *http.Client
+	debug      bool
 }
 
 func NewOpenRouterClient(ctx context.Context) (*OpenRouterClient, error) {
@@ -86,6 +87,10 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 	// Update history with new user message
 	newHistory := append(history, &Message{Role: "user", Content: message})
 
+	if c.debug {
+		fmt.Printf("[DEBUG] Request: %d messages, %d tools\n", len(messages), len(orTools))
+	}
+
 	var totalTokens, totalInputTokens, totalOutputTokens int64
 	var totalCost float64
 	var accumulatedContent strings.Builder
@@ -108,6 +113,10 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 		}
 
 		choice := resp.choices[0]
+
+		if c.debug {
+			fmt.Printf("[DEBUG] Response: finish_reason=%s, tool_calls=%d\n", choice.FinishReason, len(choice.Message.ToolCalls))
+		}
 
 		// Accumulate any content from this response
 		if choice.Message.Content != "" {
@@ -144,7 +153,22 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 				var args map[string]any
 				json.Unmarshal([]byte(tc.Function.Arguments), &args)
 
+				if c.debug {
+					fmt.Printf("[DEBUG] Tool call: %s\n", tc.Function.Name)
+					fmt.Printf("[DEBUG]   Arguments: %s\n", tc.Function.Arguments)
+				}
+
 				result := executor(tc.Function.Name, args)
+
+				if c.debug {
+					// Truncate long outputs for readability
+					debugResult := result
+					if len(debugResult) > 200 {
+						debugResult = debugResult[:200] + "..."
+					}
+					fmt.Printf("[DEBUG]   Output: %s\n", debugResult)
+				}
+
 				toolResults = append(toolResults, result)
 
 				// Add tool response to messages
@@ -189,6 +213,10 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 			Cost:         totalCost,
 		}, newHistory, nil
 	}
+}
+
+func (c *OpenRouterClient) SetDebug(enabled bool) {
+	c.debug = enabled
 }
 
 func (c *OpenRouterClient) Close() error {
