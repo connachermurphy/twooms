@@ -86,7 +86,8 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 	// Update history with new user message
 	newHistory := append(history, &Message{Role: "user", Content: message})
 
-	var totalTokens int64
+	var totalTokens, totalInputTokens, totalOutputTokens int64
+	var totalCost float64
 
 	// Tool calling loop
 	for {
@@ -96,6 +97,9 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 		}
 
 		totalTokens += resp.usage.TotalTokens
+		totalInputTokens += resp.usage.PromptTokens
+		totalOutputTokens += resp.usage.CompletionTokens
+		totalCost += resp.usage.Cost
 
 		if len(resp.choices) == 0 {
 			return nil, newHistory, ErrNoResponse
@@ -161,6 +165,9 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 			Text:         choice.Message.Content,
 			FinishReason: choice.FinishReason,
 			TokensUsed:   totalTokens,
+			InputTokens:  totalInputTokens,
+			OutputTokens: totalOutputTokens,
+			Cost:         totalCost,
 		}, newHistory, nil
 	}
 }
@@ -210,7 +217,10 @@ type openRouterResponse struct {
 		FinishReason string            `json:"finish_reason"`
 	}
 	usage struct {
-		TotalTokens int64 `json:"total_tokens"`
+		PromptTokens     int64   `json:"prompt_tokens"`
+		CompletionTokens int64   `json:"completion_tokens"`
+		TotalTokens      int64   `json:"total_tokens"`
+		Cost             float64 `json:"cost"`
 	}
 }
 
@@ -228,6 +238,9 @@ func (c *OpenRouterClient) sendRequest(ctx context.Context, config *Config, mess
 		Text:         resp.choices[0].Message.Content,
 		FinishReason: resp.choices[0].FinishReason,
 		TokensUsed:   resp.usage.TotalTokens,
+		InputTokens:  resp.usage.PromptTokens,
+		OutputTokens: resp.usage.CompletionTokens,
+		Cost:         resp.usage.Cost,
 	}, nil
 }
 
@@ -279,7 +292,10 @@ func (c *OpenRouterClient) sendRequestWithTools(ctx context.Context, config *Con
 			FinishReason string            `json:"finish_reason"`
 		} `json:"choices"`
 		Usage struct {
-			TotalTokens int64 `json:"total_tokens"`
+			PromptTokens     int64   `json:"prompt_tokens"`
+			CompletionTokens int64   `json:"completion_tokens"`
+			TotalTokens      int64   `json:"total_tokens"`
+			Cost             float64 `json:"cost"`
 		} `json:"usage"`
 	}
 

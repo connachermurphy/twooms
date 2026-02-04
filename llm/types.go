@@ -4,6 +4,9 @@ type Response struct {
 	Text         string
 	FinishReason string
 	TokensUsed   int64
+	InputTokens  int64
+	OutputTokens int64
+	Cost         float64 // Cost in USD
 }
 
 type Config struct {
