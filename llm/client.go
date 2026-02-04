@@ -19,5 +19,6 @@ type Client interface {
 	Chat(ctx context.Context, prompt string) (*Response, error)
 	ChatWithConfig(ctx context.Context, prompt string, config *Config) (*Response, error)
 	ChatWithTools(ctx context.Context, message string, history []*Message, tools []*Tool, executor ToolExecutor) (*Response, []*Message, error)
+	SetDebug(enabled bool)
 	Close() error
 }
