@@ -7,6 +7,7 @@ var debugMode bool
 func init() {
 	Register(&Command{
 		Name:        "/debug",
+		Shorthand:   "/db",
 		Description: "Toggle debug mode for LLM interactions",
 		Hidden:      true,
 		Handler: func(args []string) bool {

@@ -29,6 +29,7 @@ type Param struct {
 // Command represents a CLI command
 type Command struct {
 	Name        string
+	Shorthand   string                   // abbreviated form (e.g., "/p" for "/project")
 	Description string
 	Handler     func(args []string) bool // returns true to quit
 	Params      []Param                  // parameter definitions for tool generation
@@ -45,6 +46,9 @@ var (
 // Register adds a command to the registry
 func Register(cmd *Command) {
 	registry[strings.ToLower(cmd.Name)] = cmd
+	if cmd.Shorthand != "" {
+		registry[strings.ToLower(cmd.Shorthand)] = cmd
+	}
 }
 
 // SetStore sets the global store for commands to use
@@ -120,11 +124,15 @@ func ExecuteWithOutput(input string) (quit bool, output string, err error) {
 	return quit, output, err
 }
 
-// List returns all registered commands
+// List returns all registered commands (deduplicated)
 func List() []*Command {
+	seen := make(map[*Command]bool)
 	cmds := make([]*Command, 0, len(registry))
 	for _, cmd := range registry {
-		cmds = append(cmds, cmd)
+		if !seen[cmd] {
+			seen[cmd] = true
+			cmds = append(cmds, cmd)
+		}
 	}
 	return cmds
 }
@@ -132,8 +140,13 @@ func List() []*Command {
 // GenerateToolDefinitions creates Tool definitions from registered commands
 func GenerateToolDefinitions() []*llm.Tool {
 	var tools []*llm.Tool
+	seen := make(map[*Command]bool)
 
 	for _, cmd := range registry {
+		if seen[cmd] {
+			continue
+		}
+		seen[cmd] = true
 		if cmd.Hidden || cmd.Destructive {
 			continue
 		}

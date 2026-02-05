@@ -8,6 +8,7 @@ import (
 func init() {
 	Register(&Command{
 		Name:        "/help",
+		Shorthand:   "/h",
 		Description: "Show available commands",
 		Hidden:      true,
 		Handler: func(args []string) bool {
@@ -20,7 +21,11 @@ func init() {
 			})
 
 			for _, cmd := range cmds {
-				fmt.Printf("  %-15s - %s\n", cmd.Name, cmd.Description)
+				nameCol := cmd.Name
+				if cmd.Shorthand != "" {
+					nameCol = fmt.Sprintf("%s (%s)", cmd.Name, cmd.Shorthand)
+				}
+				fmt.Printf("  %-22s - %s\n", nameCol, cmd.Description)
 			}
 
 			return false

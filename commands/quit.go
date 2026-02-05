@@ -5,6 +5,7 @@ import "fmt"
 func init() {
 	Register(&Command{
 		Name:        "/quit",
+		Shorthand:   "/q",
 		Description: "Exit Twooms",
 		Hidden:      true,
 		Handler: func(args []string) bool {
