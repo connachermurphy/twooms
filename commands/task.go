@@ -11,6 +11,7 @@ import (
 func init() {
 	Register(&Command{
 		Name:        "/task",
+		Shorthand:   "/t",
 		Description: "Add a task to a project",
 		Params: []Param{
 			{Name: "project_id", Type: ParamTypeString, Description: "The ID of the project to add the task to", Required: true},
@@ -49,6 +50,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/tasks",
+		Shorthand:   "/ts",
 		Description: "List tasks in a project. Call 'projects' first if you only have the project name.",
 		Params: []Param{
 			{Name: "project_id", Type: ParamTypeString, Description: "The ID of the project to list tasks for", Required: true},
@@ -137,6 +139,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/done",
+		Shorthand:   "/d",
 		Description: "Mark a task as done",
 		Params: []Param{
 			{Name: "task_id", Type: ParamTypeString, Description: "The ID of the task to mark as done", Required: true},
@@ -175,6 +178,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/undone",
+		Shorthand:   "/ud",
 		Description: "Mark a task as not done",
 		Params: []Param{
 			{Name: "task_id", Type: ParamTypeString, Description: "The ID of the task to mark as not done", Required: true},
@@ -213,6 +217,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/deltask",
+		Shorthand:   "/dt",
 		Description: "Delete a task",
 		Destructive: true,
 		Params: []Param{
@@ -252,6 +257,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/due",
+		Shorthand:   "/du",
 		Description: "Set a task's due date",
 		Params: []Param{
 			{Name: "task_id", Type: ParamTypeString, Description: "The ID of the task", Required: true},
@@ -307,6 +313,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/duration",
+		Shorthand:   "/dur",
 		Description: "Set a task's duration",
 		Params: []Param{
 			{Name: "task_id", Type: ParamTypeString, Description: "The ID of the task", Required: true},

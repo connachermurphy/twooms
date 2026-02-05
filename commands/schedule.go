@@ -27,6 +27,7 @@ func isOverdue(t *storage.Task) bool {
 func init() {
 	Register(&Command{
 		Name:        "/today",
+		Shorthand:   "/td",
 		Description: "List tasks due today (including overdue)",
 		Params: []Param{
 			{Name: "project_id", Type: ParamTypeString, Description: "Optional project ID to filter by", Required: false},
@@ -53,6 +54,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/tomorrow",
+		Shorthand:   "/tm",
 		Description: "List tasks due tomorrow",
 		Params: []Param{
 			{Name: "project_id", Type: ParamTypeString, Description: "Optional project ID to filter by", Required: false},
@@ -80,6 +82,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/week",
+		Shorthand:   "/w",
 		Description: "List tasks due this week (Monday through Sunday)",
 		Params: []Param{
 			{Name: "project_id", Type: ParamTypeString, Description: "Optional project ID to filter by", Required: false},

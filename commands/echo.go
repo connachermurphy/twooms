@@ -8,6 +8,7 @@ import (
 func init() {
 	Register(&Command{
 		Name:        "/echo",
+		Shorthand:   "/e",
 		Description: "Echo your message",
 		Hidden:      true,
 		Handler: func(args []string) bool {

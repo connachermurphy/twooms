@@ -5,6 +5,7 @@ import "fmt"
 func init() {
 	Register(&Command{
 		Name:        "/shortcut",
+		Shorthand:   "/sc",
 		Description: "Set a custom shortcut for a project",
 		Params: []Param{
 			{Name: "project_id", Type: ParamTypeString, Description: "The ID or current shortcut of the project", Required: true},

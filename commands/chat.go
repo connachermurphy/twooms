@@ -114,6 +114,7 @@ func trimCommandContext() {
 func init() {
 	Register(&Command{
 		Name:        "/clearchat",
+		Shorthand:   "/cc",
 		Description: "Clear the chat conversation history",
 		Hidden:      true,
 		Handler: func(args []string) bool {
@@ -125,6 +126,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/usage",
+		Shorthand:   "/u",
 		Description: "Show session token usage and cost statistics",
 		Hidden:      true,
 		Handler: func(args []string) bool {
@@ -153,6 +155,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/chat",
+		Shorthand:   "/c",
 		Description: "Chat with the AI assistant",
 		Hidden:      true, // Exclude from tool generation
 		Params: []Param{

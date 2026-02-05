@@ -8,6 +8,7 @@ import (
 func init() {
 	Register(&Command{
 		Name:        "/project",
+		Shorthand:   "/p",
 		Description: "Create a new project",
 		Params: []Param{
 			{Name: "name", Type: ParamTypeString, Description: "The name of the project to create", Required: true},
@@ -32,6 +33,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/projects",
+		Shorthand:   "/ps",
 		Description: "List all projects with their IDs. Use this to find a project's ID when you have the name.",
 		Handler: func(args []string) bool {
 			projects, err := GetStore().ListProjects()
@@ -66,6 +68,7 @@ func init() {
 
 	Register(&Command{
 		Name:        "/delproject",
+		Shorthand:   "/dp",
 		Description: "Delete a project and its tasks",
 		Destructive: true,
 		Params: []Param{
