@@ -198,6 +198,12 @@ func (c *OpenRouterClient) ChatWithTools(ctx context.Context, message string, hi
 			finalContent = "Done."
 		}
 
+		// If we got no content at all (no text, no tool calls), the API likely
+		// returned an empty or malformed response
+		if finalContent == "" && len(toolResults) == 0 && totalInputTokens == 0 {
+			return nil, newHistory, fmt.Errorf("received empty response from API (no content or tool calls)")
+		}
+
 		assistantMsg := &Message{
 			Role:    "assistant",
 			Content: finalContent,
