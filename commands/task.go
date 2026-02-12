@@ -14,7 +14,7 @@ func init() {
 		Shorthand:   "/t",
 		Description: "Add a task to a project",
 		Params: []Param{
-			{Name: "project_id", Type: ParamTypeString, Description: "The ID of the project to add the task to", Required: true},
+			{Name: "project_id", Type: ParamTypeString, Description: "The ID or shortcut of the project to add the task to", Required: true},
 			{Name: "task_name", Type: ParamTypeString, Description: "The name of the task to create", Required: true},
 		},
 		Handler: func(args []string) bool {
@@ -53,7 +53,7 @@ func init() {
 		Shorthand:   "/ts",
 		Description: "List tasks in a project. Call 'projects' first if you only have the project name.",
 		Params: []Param{
-			{Name: "project_id", Type: ParamTypeString, Description: "The ID of the project to list tasks for", Required: true},
+			{Name: "project_id", Type: ParamTypeString, Description: "The ID or shortcut of the project to list tasks for", Required: true},
 		},
 		Handler: func(args []string) bool {
 			if len(args) == 0 {

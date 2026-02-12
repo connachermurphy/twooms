@@ -39,14 +39,16 @@ func getSystemPrompt() string {
 TODAY'S DATE: %s (%s)
 
 IMPORTANT RULES:
-1. When a user refers to a project by NAME (not ID), FIRST call "projects" to find the ID, then use that ID.
-2. When a user refers to a task by NAME, FIRST call the listing tool to find the task's ID.
-3. NEVER ask the user for an ID. Always look it up using available tools.
-4. When users refer to "that task" or "the project I just created", use context from [Command executed] messages.
-5. When setting due dates: "today" = %s, "tomorrow" = the next day, etc.
-6. Tool outputs are ALREADY shown to the user. After using tools, just say "Done." or give a one-sentence summary. Do NOT repeat or list the tool output.
-7. Be concise since this is a terminal application.
-8. When creating a task and setting its properties (duration, due date), call "task" FIRST and wait for the result to get the task ID, then call duration/due with that ID. Do NOT call them in parallel.`, today, weekday, today)
+1. When a user refers to a project by NAME (not ID), FIRST call "projects" to find its shortcut, then use that shortcut as the project_id.
+2. Projects have SHORTCUTS (shown in brackets in the projects list, e.g. [a], [work]). Always use the shortcut as the project_id parameter when calling tools like "task" or "tasks". Shortcuts are valid project IDs.
+3. When a user refers to a task by NAME, FIRST call the listing tool to find the task's ID.
+4. NEVER ask the user for an ID. Always look it up using available tools.
+5. When users refer to "that task" or "the project I just created", use context from [Command executed] messages.
+6. When setting due dates: "today" = %s, "tomorrow" = the next day, etc.
+7. Tool outputs are ALREADY shown to the user. After using tools, just say "Done." or give a one-sentence summary. Do NOT repeat or list the tool output.
+8. Be concise since this is a terminal application.
+9. When creating a task and setting its properties (duration, due date), call "task" FIRST and wait for the result to get the task ID, then call duration/due with that ID. Do NOT call them in parallel.
+10. ALWAYS attempt tool calls when asked to perform actions. Never refuse by saying a project or task doesn't exist without first trying the tool call.`, today, weekday, today)
 }
 
 // ensureSystemPrompt adds the system prompt if chat history is empty
