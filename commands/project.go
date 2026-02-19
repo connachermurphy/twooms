@@ -72,7 +72,7 @@ func init() {
 		Description: "Delete a project and its tasks",
 		Destructive: true,
 		Params: []Param{
-			{Name: "project_id", Type: ParamTypeString, Description: "The ID of the project to delete", Required: true},
+			{Name: "project_id", Type: ParamTypeString, Description: "The ID or shortcut of the project to delete", Required: true},
 		},
 		Handler: func(args []string) bool {
 			if len(args) == 0 {

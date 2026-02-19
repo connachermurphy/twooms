@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Twooms is a chat-based task manager that runs in the terminal. It's a Go CLI application with a command-based architecture.
 
+## Public-Facing Content
+
+When writing GitHub issues, PRs, commit messages, and any other public-facing content, always remove information specific to the user's own projects (project names, task names, personal data). Keep examples generic.
+
 ## Building and Running
 
 Build the project:
